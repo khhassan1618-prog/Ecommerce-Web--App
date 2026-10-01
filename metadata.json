@@ -1,0 +1,10 @@
+{
+  "name": "NOVA/RETRON",
+  "description": "NOVA/RETRON — Retro-futuristic fashion house. Archival silhouettes, quantum fabrics, and speculative cyberpunk tailoring from a future that never happened.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

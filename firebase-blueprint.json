@@ -1,0 +1,69 @@
+{
+  "entities": {
+    "customer": {
+      "title": "Customer",
+      "description": "Customer account profile and details",
+      "type": "object",
+      "properties": {
+        "customerId": { "type": "string", "description": "Unique customer UID" },
+        "name": { "type": "string", "description": "Full name of customer" },
+        "email": { "type": "string", "format": "email", "description": "Primary email" },
+        "phone": { "type": "string", "description": "Contact phone number" },
+        "address": { "type": "string", "description": "Shipping street address" },
+        "city": { "type": "string", "description": "City of residence" },
+        "postalCode": { "type": "string", "description": "Postal code" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["customerId", "email", "createdAt"]
+    },
+    "order": {
+      "title": "Order",
+      "description": "Garment purchase allocation record and tracking",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string", "description": "Order identification number" },
+        "customerId": { "type": "string", "description": "Owner customer UID" },
+        "customerName": { "type": "string", "description": "Recipient full name" },
+        "customerEmail": { "type": "string", "format": "email", "description": "Recipient email" },
+        "customerPhone": { "type": "string", "description": "Recipient telephone" },
+        "subtotal": { "type": "number", "description": "Subtotal in PKR" },
+        "discount": { "type": "number", "description": "Applied discount in PKR" },
+        "discountCode": { "type": "string", "description": "Applied coupon code" },
+        "total": { "type": "number", "description": "Total amount in PKR" },
+        "paymentMethod": { "type": "string", "description": "Selected payment method" },
+        "status": { "type": "string", "description": "Order fulfillment status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Order creation date-time" }
+      },
+      "required": ["orderId", "customerId", "total", "status", "createdAt"]
+    },
+    "conversation": {
+      "title": "Conversation",
+      "description": "AI Support and Stylist conversation log",
+      "type": "object",
+      "properties": {
+        "conversationId": { "type": "string", "description": "Unique conversation thread ID" },
+        "customerId": { "type": "string", "description": "Customer UID or guest ID" },
+        "customerName": { "type": "string", "description": "Customer display name" },
+        "startedAt": { "type": "string", "format": "date-time", "description": "Session start timestamp" },
+        "lastMessageAt": { "type": "string", "format": "date-time", "description": "Latest interaction timestamp" },
+        "status": { "type": "string", "description": "Status: active, escalated, or resolved" },
+        "currentPage": { "type": "string", "description": "Active page during session" }
+      },
+      "required": ["conversationId", "customerId", "startedAt", "status"]
+    }
+  },
+  "firestore": {
+    "/customers/{customerId}": {
+      "schema": "customer",
+      "description": "User customer profile"
+    },
+    "/orders/{orderId}": {
+      "schema": "order",
+      "description": "Customer orders and fulfillment timeline"
+    },
+    "/conversations/{conversationId}": {
+      "schema": "conversation",
+      "description": "Customer AI chat logs and support threads"
+    }
+  }
+}

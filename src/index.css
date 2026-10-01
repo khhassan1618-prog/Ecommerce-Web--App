@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Syne", sans-serif;
+  --font-sans: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --color-brand-bg: #070707;
+  --color-brand-text: #F3EDD8;
+  --color-brand-accent: #FD8A46;
+  --color-brand-surface: #202221;
+  --color-brand-surface-dark: #121313;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #070707;
+  color: #F3EDD8;
+  cursor: default;
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Retro CRT Scanlines Effect */
+.scanlines-overlay {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.35) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.03),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 0, 255, 0.03)
+  );
+  background-size: 100% 3px, 6px 100%;
+  pointer-events: none;
+}
+
+/* Subtle Film Grain */
+.noise-overlay {
+  background-image: radial-gradient(rgba(243, 237, 216, 0.06) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+/* Marquee Animation */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 35s linear infinite;
+}
+
+/* Vertical CRT Scan Beam Sweep */
+@keyframes scanbeam {
+  0% { top: -10%; opacity: 0; }
+  20% { opacity: 0.8; }
+  80% { opacity: 0.8; }
+  100% { top: 110%; opacity: 0; }
+}
+
+.crt-scanbeam {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: linear-gradient(180deg, transparent, rgba(253, 138, 70, 0.25), rgba(255, 255, 255, 0.4), rgba(253, 138, 70, 0.25), transparent);
+  pointer-events: none;
+  z-index: 9990;
+  animation: scanbeam 9s ease-in-out infinite;
+  box-shadow: 0 0 15px rgba(253, 138, 70, 0.4);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #070707;
+}
+::-webkit-scrollbar-thumb {
+  background: #202221;
+  border-radius: 0px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #FD8A46;
+}
+
+/* Text glow utilities */
+.glow-accent {
+  text-shadow: 0 0 12px rgba(253, 138, 70, 0.5);
+}
+
+.glow-subtle {
+  text-shadow: 0 0 16px rgba(243, 237, 216, 0.2);
+}
+
+/* Custom selection */
+::selection {
+  background-color: #FD8A46;
+  color: #070707;
+}
