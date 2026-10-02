@@ -1,0 +1,88 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React from 'react';
+import { StoreProvider } from './context/StoreContext';
+import { Preloader } from './components/Preloader';
+import { Navbar } from './components/Navbar';
+import { CyberCursor } from './components/CyberCursor';
+import { MarqueeTicker } from './components/MarqueeTicker';
+import { HeroSection } from './sections/HeroSection';
+import { StorySection } from './sections/StorySection';
+import { ArchiveSection } from './sections/ArchiveSection';
+import { CinematicVideoSection } from './sections/CinematicVideoSection';
+import { PastFutureSection } from './sections/PastFutureSection';
+import { CollectionSection } from './sections/CollectionSection';
+import { Footer } from './components/Footer';
+import { ProductDetailModal } from './components/ProductDetailModal';
+import { CartDrawer } from './components/CartDrawer';
+import { CheckoutModal } from './components/CheckoutModal';
+import { OrderTrackingModal } from './components/OrderTrackingModal';
+import { CustomerAccountModal } from './components/CustomerAccountModal';
+import { AISupportChat } from './components/AISupportChat';
+import { AdminDashboardModal } from './components/AdminDashboardModal';
+import { NotificationToastContainer } from './components/NotificationToastContainer';
+
+export default function App() {
+  return (
+    <StoreProvider>
+      <div className="relative min-h-screen bg-[#070707] text-[#F3EDD8] selection:bg-[#FD8A46] selection:text-[#070707] overflow-x-hidden">
+        {/* Interactive Custom Cybernetic Cursor */}
+        <CyberCursor />
+
+        {/* Ambient CRT Scan Beam Sweep */}
+        <div className="crt-scanbeam" />
+
+        {/* Fullscreen System Initialization Preloader */}
+        <Preloader />
+
+        {/* Global Minimalist Floating Navigation */}
+        <Navbar />
+
+        {/* Main Immersive Narrative Sections */}
+        <main>
+          <HeroSection />
+
+          {/* Archival Marquee Ribbon */}
+          <MarqueeTicker />
+
+          <StorySection />
+          <ArchiveSection />
+
+          {/* Cinematic Lookbook Video Section */}
+          <CinematicVideoSection />
+
+          <PastFutureSection />
+          <CollectionSection />
+
+          {/* Second Marquee Ribbon */}
+          <MarqueeTicker
+            text={[
+              'ISLAMABAD LOGISTICS NODE',
+              'EXPRESS AIR CARGO ACTIVE',
+              'SECURITY SEAL VERIFICATION',
+              '14-DAY ARCHIVAL PRIVILEGE',
+              'NOVA/RETRON ARCHIVE',
+              'FASHION FROM A FUTURE THAT NEVER HAPPENED'
+            ]}
+          />
+        </main>
+
+        {/* Archive Footer */}
+        <Footer />
+
+        {/* Dynamic Interactive Modals & Drawers */}
+        <ProductDetailModal />
+        <CartDrawer />
+        <CheckoutModal />
+        <OrderTrackingModal />
+        <CustomerAccountModal />
+        <AISupportChat />
+        <AdminDashboardModal />
+        <NotificationToastContainer />
+      </div>
+    </StoreProvider>
+  );
+}

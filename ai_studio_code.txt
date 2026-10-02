@@ -1,0 +1,74 @@
+import React from 'react';
+import { useStore } from '../context/StoreContext';
+import { CheckCircle2, AlertTriangle, AlertCircle, Info, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+
+export const NotificationToastContainer: React.FC = () => {
+  const { notifications, removeNotification } = useStore();
+
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'success':
+        return <CheckCircle2 size={16} className="text-[#FD8A46] shrink-0" />;
+      case 'warning':
+        return <AlertTriangle size={16} className="text-amber-400 shrink-0" />;
+      case 'error':
+        return <AlertCircle size={16} className="text-rose-400 shrink-0" />;
+      default:
+        return <Info size={16} className="text-[#F3EDD8]/70 shrink-0" />;
+    }
+  };
+
+  const getBorderColor = (type: string) => {
+    switch (type) {
+      case 'success':
+        return 'border-[#FD8A46]/60 shadow-[0_0_20px_rgba(253,138,70,0.15)]';
+      case 'warning':
+        return 'border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.15)]';
+      case 'error':
+        return 'border-rose-500/50 shadow-[0_0_20px_rgba(244,63,94,0.15)]';
+      default:
+        return 'border-[#202221] shadow-xl';
+    }
+  };
+
+  return (
+    <div
+      aria-live="polite"
+      aria-atomic="true"
+      className="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0"
+    >
+      <AnimatePresence>
+        {notifications.map(toast => (
+          <motion.div
+            key={toast.id}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            className={`pointer-events-auto p-3.5 bg-[#0e0f0f]/95 backdrop-blur-md border ${getBorderColor(
+              toast.type
+            )} text-[#F3EDD8] flex items-start gap-3 relative font-mono text-xs`}
+          >
+            <div className="mt-0.5">{getIcon(toast.type)}</div>
+            <div className="flex-1 min-w-0 pr-4">
+              <div className="font-bold tracking-wider text-[11px] uppercase text-[#F3EDD8]">
+                {toast.title}
+              </div>
+              <div className="text-[11px] text-[#F3EDD8]/70 mt-0.5 leading-snug break-words">
+                {toast.message}
+              </div>
+            </div>
+            <button
+              onClick={() => removeNotification(toast.id)}
+              className="text-[#F3EDD8]/40 hover:text-[#FD8A46] p-1 cursor-pointer transition-colors shrink-0"
+              aria-label="Dismiss notification"
+            >
+              <X size={14} />
+            </button>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+};
