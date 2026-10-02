@@ -7,6 +7,7 @@ export interface CustomerContext {
   currentProduct?: Product | null;
   currentPage?: string;
   cartItemsCount?: number;
+  cartContext?: string;
   enableSearch?: boolean;
   modelComplexity?: 'fast' | 'general' | 'complex';
 }
@@ -60,6 +61,7 @@ export async function generateAIResponse(
         })),
         productContext: currentProduct ? `${currentProduct.name} (PKR ${currentProduct.price.toLocaleString()}, Details: ${currentProduct.details.join(', ')})` : '',
         orderContext: userOrders.length > 0 ? `Latest order: ${userOrders[0].orderId} (${userOrders[0].status})` : '',
+        cartContext: customerContext.cartContext || '',
         enableSearch: customerContext.enableSearch ?? false,
         taskComplexity: customerContext.modelComplexity || 'general'
       })

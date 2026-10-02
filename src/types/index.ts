@@ -5,6 +5,9 @@ export interface Product {
   name: string;
   sku: string;
   price: number; // In PKR
+  originalPrice?: number; // Pre-discount price if on archive sale
+  rating?: number; // 1-5 archive quality index
+  reviewCount?: number;
   category: 'Outerwear' | 'Footwear' | 'Hoodies' | 'Tops' | 'Bags' | 'Accessories';
   collection: string;
   era: ProductEra;
@@ -25,6 +28,7 @@ export interface CartItem {
   size: string;
   color: string;
   quantity: number;
+  savedForLater?: boolean;
 }
 
 export interface OrderTrackingStep {
@@ -114,3 +118,18 @@ export interface ArchiveRecord {
   image: string;
   materials: string;
 }
+
+export interface NotificationToast {
+  id: string;
+  type: 'success' | 'info' | 'warning' | 'error';
+  title: string;
+  message: string;
+  timestamp: number;
+}
+
+export interface CustomerPreferences {
+  audioEnabled: boolean;
+  orderEmailUpdates: boolean;
+  newsletterSubscribed: boolean;
+}
+

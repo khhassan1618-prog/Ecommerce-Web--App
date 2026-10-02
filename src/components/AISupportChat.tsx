@@ -24,12 +24,12 @@ import {
 } from 'lucide-react';
 
 const SUGGESTED_PROMPTS = [
-  'WHERE IS MY ORDER?',
-  'WHAT IS YOUR RETURN POLICY?',
-  'SHOW ME JACKETS',
-  'WHAT SIZE SHOULD I GET?',
-  'WHAT ARE YOUR DELIVERY TIMES?',
-  'I WANT TO SPEAK TO A HUMAN'
+  'Find something for me',
+  'Help me choose a size',
+  'Recommend products',
+  'Compare products',
+  'Track my order',
+  'What is your return policy?'
 ];
 
 export const AISupportChat: React.FC = () => {
@@ -41,6 +41,7 @@ export const AISupportChat: React.FC = () => {
     clearChatHistory,
     currentCustomer,
     orders,
+    cart,
     selectedProduct,
     products,
     setSelectedProduct,
@@ -138,6 +139,8 @@ export const AISupportChat: React.FC = () => {
           }
         }
 
+        const cartSummary = cart.filter(i => !i.savedForLater).map(i => `${i.product.name} (Size: ${i.size}, Color: ${i.color}, Qty: ${i.quantity})`).join(', ');
+
         const response = await generateAIResponse(
           message,
           activeConversation.messages,
@@ -145,6 +148,8 @@ export const AISupportChat: React.FC = () => {
             customer: currentCustomer,
             orders,
             currentProduct: selectedProduct,
+            cartContext: cartSummary,
+            cartItemsCount: cart.length,
             enableSearch,
             modelComplexity
           }

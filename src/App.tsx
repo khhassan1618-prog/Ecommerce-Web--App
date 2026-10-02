@@ -23,6 +23,7 @@ import { OrderTrackingModal } from './components/OrderTrackingModal';
 import { CustomerAccountModal } from './components/CustomerAccountModal';
 import { AISupportChat } from './components/AISupportChat';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
+import { NotificationToastContainer } from './components/NotificationToastContainer';
 
 export default function App() {
   return (
@@ -80,6 +81,7 @@ export default function App() {
         <CustomerAccountModal />
         <AISupportChat />
         <AdminDashboardModal />
+        <NotificationToastContainer />
       </div>
     </StoreProvider>
   );

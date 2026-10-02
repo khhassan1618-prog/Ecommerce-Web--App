@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Product, CartItem, Order, Customer, ChatMessage, Conversation, SupportRequest } from '../types';
+import { Product, CartItem, Order, Customer, ChatMessage, Conversation, SupportRequest, NotificationToast } from '../types';
 import { PRODUCTS } from '../data/products';
 import { soundEngine } from '../utils/audioEngine';
 import {
   auth,
   signInWithGoogle,
+  signUpWithEmail,
+  signInWithEmail,
   signOutUser,
   onAuthStateChanged,
   testFirestoreConnection,
@@ -24,7 +26,7 @@ import {
   getCachedAccessToken,
   requestGmailAccessToken
 } from '../services/firebase';
-import { sendOrderTrackingEmail, OWNER_EMAIL } from '../services/gmailService';
+import { sendOrderTrackingEmail, sendOrderConfirmationEmail, OWNER_EMAIL } from '../services/gmailService';
 
 interface StoreContextType {
   products: Product[];
@@ -40,12 +42,39 @@ interface StoreContextType {
   removeFromCart: (productId: string, size: string, color: string) => void;
   updateQuantity: (productId: string, size: string, color: string, qty: number) => void;
   clearCart: () => void;
+  saveForLater: (productId: string, size: string, color: string) => void;
+  moveToCartFromSaved: (productId: string, size: string, color: string) => void;
+
+  // Catalog Product Management
+  addProduct: (product: Product) => void;
+  updateProduct: (product: Product) => void;
+  deleteProduct: (productId: string) => void;
+
+  // Notifications
+  notifications: NotificationToast[];
+  addNotification: (type: 'success' | 'info' | 'warning' | 'error', title: string, message: string) => void;
+  removeNotification: (id: string) => void;
+
+  // Admin Security Clearances
+  isAdminAuthenticated: boolean;
+  verifyAdminPasscode: (code: string) => boolean;
+  adminLogout: () => void;
 
   // Active customer & Firebase Auth
   currentCustomer: Customer | null;
   customers: Customer[];
   loginCustomer: (email: string, name?: string) => void;
   loginWithGoogle: () => Promise<void>;
+  loginWithEmailPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  registerWithEmailPassword: (
+    email: string,
+    password: string,
+    name?: string,
+    phone?: string,
+    address?: string,
+    city?: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  updateCustomerProfile: (data: Partial<Customer>) => Promise<void>;
   logoutCustomer: () => void;
   wishlist: string[];
   toggleWishlist: (productId: string) => void;
@@ -116,6 +145,7 @@ interface StoreContextType {
   ownerGmail: string;
   connectGmailAccount: () => Promise<boolean>;
   sendTrackingEmail: (orderId: string, recipientEmail: string, note?: string) => Promise<{ success: boolean; message: string }>;
+  sendOrderConfirmation: (order: Order, recipientEmail: string, note?: string) => Promise<{ success: boolean; message: string }>;
   emailDispatchLogs: Array<{
     id: string;
     orderId: string;
@@ -300,8 +330,78 @@ const INITIAL_ORDERS: Order[] = [
 ];
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Products
-  const [products] = useState<Product[]>(PRODUCTS);
+  // Products (persisted across admin modifications)
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      const saved = localStorage.getItem('nr_products');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return PRODUCTS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('nr_products', JSON.stringify(products));
+  }, [products]);
+
+  // Notifications state
+  const [notifications, setNotifications] = useState<NotificationToast[]>([]);
+
+  const addNotification = useCallback(
+    (type: 'success' | 'info' | 'warning' | 'error', title: string, message: string) => {
+      const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const newToast: NotificationToast = { id, type, title, message, timestamp: Date.now() };
+      setNotifications(prev => [...prev.slice(-4), newToast]);
+      setTimeout(() => {
+        setNotifications(prev => prev.filter(t => t.id !== id));
+      }, 4500);
+    },
+    []
+  );
+
+  const removeNotification = useCallback((id: string) => {
+    setNotifications(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  // Admin Security Clearances
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('nr_admin_auth') === 'true';
+  });
+
+  const verifyAdminPasscode = (code: string): boolean => {
+    const clean = code.trim();
+    if (clean === 'NOVA-ADMIN-2026' || clean === '2026' || clean.toUpperCase() === 'ARCHIVE') {
+      setIsAdminAuthenticated(true);
+      localStorage.setItem('nr_admin_auth', 'true');
+      addNotification('success', 'SECURITY CLEARANCE GRANTED', 'Access to Executive Console authorized.');
+      return true;
+    }
+    addNotification('error', 'AUTHORIZATION DENIED', 'Invalid executive passcode.');
+    return false;
+  };
+
+  const adminLogout = () => {
+    setIsAdminAuthenticated(false);
+    localStorage.removeItem('nr_admin_auth');
+    addNotification('info', 'CONSOLE LOCKED', 'Administrator credentials cleared.');
+  };
+
+  // Catalog Product Management
+  const addProduct = (newProd: Product) => {
+    setProducts(prev => [newProd, ...prev]);
+    addNotification('success', 'ARCHIVE REGISTERED', `Product ${newProd.name} added to catalog.`);
+  };
+
+  const updateProduct = (updated: Product) => {
+    setProducts(prev => prev.map(p => (p.id === updated.id ? updated : p)));
+    addNotification('info', 'ARCHIVE UPDATED', `Product ${updated.name} updated.`);
+  };
+
+  const deleteProduct = (productId: string) => {
+    setProducts(prev => prev.filter(p => p.id !== productId));
+    addNotification('warning', 'ARCHIVE PURGED', `Product removed from catalog.`);
+  };
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -503,12 +603,26 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         console.log('[FIREBASE AUTH] Patron authenticated:', firebaseUser.email);
-        const profile = await getCustomerProfile(firebaseUser.uid);
-        if (profile) {
-          setCurrentCustomer(profile);
-          setWishlist(profile.wishlist || []);
-        } else {
-          const newProfile: Customer = {
+        try {
+          const profile = await getCustomerProfile(firebaseUser.uid);
+          if (profile) {
+            setCurrentCustomer(profile);
+            setWishlist(profile.wishlist || []);
+          } else {
+            const newProfile: Customer = {
+              customerId: firebaseUser.uid,
+              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Authorized Patron',
+              email: firebaseUser.email || '',
+              phone: firebaseUser.phoneNumber || '+92 300 0000000',
+              createdAt: new Date().toISOString(),
+              wishlist: ['prod-01']
+            };
+            setCurrentCustomer(newProfile);
+            await saveCustomerProfile(newProfile);
+          }
+        } catch (e) {
+          console.warn('[FIREBASE AUTH PROFILE FETCH NOTICE]', e);
+          const fallbackProfile: Customer = {
             customerId: firebaseUser.uid,
             name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Authorized Patron',
             email: firebaseUser.email || '',
@@ -516,8 +630,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             createdAt: new Date().toISOString(),
             wishlist: ['prod-01']
           };
-          setCurrentCustomer(newProfile);
-          await saveCustomerProfile(newProfile);
+          setCurrentCustomer(fallbackProfile);
         }
       }
     });
@@ -578,16 +691,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Cart operations
   const addToCart = (product: Product, size: string, color: string, quantity = 1) => {
+    if (!product.inStock || product.stockCount <= 0) {
+      addNotification('warning', 'OUT OF STOCK', `${product.name} is currently depleted.`);
+      return;
+    }
+
     setCart(prev => {
       const existingIdx = prev.findIndex(
         item => item.product.id === product.id && item.size === size && item.color === color
       );
       if (existingIdx > -1) {
+        const currentQty = prev[existingIdx].quantity;
+        const targetQty = Math.min(currentQty + quantity, product.stockCount);
+        if (currentQty >= product.stockCount) {
+          addNotification('warning', 'STOCK LIMIT', `Maximum available stock (${product.stockCount}) reached.`);
+          return prev;
+        }
         const next = [...prev];
-        next[existingIdx].quantity += quantity;
+        next[existingIdx] = { ...next[existingIdx], quantity: targetQty, savedForLater: false };
         return next;
       }
-      return [...prev, { product, size, color, quantity }];
+      const safeQty = Math.min(quantity, product.stockCount);
+      return [...prev, { product, size, color, quantity: safeQty, savedForLater: false }];
     });
   };
 
@@ -597,6 +722,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         item => !(item.product.id === productId && item.size === size && item.color === color)
       )
     );
+    addNotification('info', 'MANIFEST UPDATED', 'Item removed from your cart.');
   };
 
   const updateQuantity = (productId: string, size: string, color: string, qty: number) => {
@@ -605,15 +731,46 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
     setCart(prev =>
-      prev.map(item =>
-        item.product.id === productId && item.size === size && item.color === color
-          ? { ...item, quantity: qty }
-          : item
-      )
+      prev.map(item => {
+        if (item.product.id === productId && item.size === size && item.color === color) {
+          const maxStock = item.product.stockCount || 99;
+          const cappedQty = Math.min(qty, maxStock);
+          if (qty > maxStock) {
+            addNotification('warning', 'STOCK LIMIT', `Only ${maxStock} units currently available.`);
+          }
+          return { ...item, quantity: cappedQty };
+        }
+        return item;
+      })
     );
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => {
+    setCart([]);
+    addNotification('info', 'CART CLEARED', 'All manifest entries purged.');
+  };
+
+  const saveForLater = (productId: string, size: string, color: string) => {
+    setCart(prev =>
+      prev.map(item =>
+        item.product.id === productId && item.size === size && item.color === color
+          ? { ...item, savedForLater: true }
+          : item
+      )
+    );
+    addNotification('info', 'SAVED FOR LATER', 'Item moved to your reserve shelf.');
+  };
+
+  const moveToCartFromSaved = (productId: string, size: string, color: string) => {
+    setCart(prev =>
+      prev.map(item =>
+        item.product.id === productId && item.size === size && item.color === color
+          ? { ...item, savedForLater: false }
+          : item
+      )
+    );
+    addNotification('success', 'RESTORED TO CART', 'Item restored to active dispatch manifest.');
+  };
 
   // Discount Coupons
   const applyCoupon = (code: string) => {
@@ -621,21 +778,26 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (clean === 'NOVA10') {
       setDiscountCode('NOVA10');
       setDiscountPercent(10);
+      addNotification('success', 'COUPON APPLIED', '10% Archival Credit unlocked.');
       return { success: true, message: 'COUPON APPLIED: 10% ARCHIVAL CREDIT' };
     } else if (clean === 'ARCHIVE15') {
       setDiscountCode('ARCHIVE15');
       setDiscountPercent(15);
+      addNotification('success', 'COUPON APPLIED', '15% VIP Privilege unlocked.');
       return { success: true, message: 'COUPON APPLIED: 15% VIP PRIVILEGE' };
     } else if (clean === 'FUTURE20') {
       setDiscountCode('FUTURE20');
       setDiscountPercent(20);
+      addNotification('success', 'COUPON APPLIED', '20% Speculative Bonus unlocked.');
       return { success: true, message: 'COUPON APPLIED: 20% SPECULATIVE BONUS' };
     }
+    addNotification('error', 'INVALID COUPON', 'Code unrecognized in cipher registry.');
     return { success: false, message: 'INVALID PROTOCOL CODE' };
   };
 
-  const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
-  const subtotal = cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
+  const activeCartItems = cart.filter(item => !item.savedForLater);
+  const cartCount = activeCartItems.reduce((total, item) => total + item.quantity, 0);
+  const subtotal = activeCartItems.reduce((total, item) => total + item.product.price * item.quantity, 0);
   const discount = Math.round((subtotal * discountPercent) / 100);
   const shipping = subtotal > 25000 || subtotal === 0 ? 0 : 650;
   const total = Math.max(0, subtotal - discount + shipping);
@@ -663,20 +825,96 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (res.accessToken) {
           setIsGmailConnected(true);
         }
-        const cust: Customer = {
+        let profile = await getCustomerProfile(user.uid);
+        if (!profile) {
+          profile = {
+            customerId: user.uid,
+            name: user.displayName || user.email?.split('@')[0] || 'Patron',
+            email: user.email || '',
+            phone: user.phoneNumber || '+92 300 0000000',
+            createdAt: new Date().toISOString(),
+            wishlist: ['prod-01']
+          };
+          await saveCustomerProfile(profile);
+        }
+        setCurrentCustomer(profile);
+      }
+    } catch (err) {
+      console.error('[GOOGLE AUTH ERROR]', err);
+      throw err;
+    }
+  };
+
+  const loginWithEmailPassword = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const user = await signInWithEmail(email, password);
+      let profile = await getCustomerProfile(user.uid);
+      if (!profile) {
+        profile = {
           customerId: user.uid,
-          name: user.displayName || user.email?.split('@')[0] || 'Patron',
-          email: user.email || '',
+          name: user.displayName || email.split('@')[0],
+          email: user.email || email,
           phone: user.phoneNumber || '+92 300 0000000',
           createdAt: new Date().toISOString(),
           wishlist: ['prod-01']
         };
-        setCurrentCustomer(cust);
-        await saveCustomerProfile(cust);
+        await saveCustomerProfile(profile);
       }
-    } catch (err) {
-      console.error('[GOOGLE AUTH ERROR]', err);
+      setCurrentCustomer(profile);
+      return { success: true };
+    } catch (err: any) {
+      console.error('[EMAIL LOGIN ERROR]', err);
+      let errMsg = err.message || 'Login failed';
+      if (errMsg.includes('auth/invalid-credential') || errMsg.includes('auth/wrong-password') || errMsg.includes('auth/user-not-found')) {
+        errMsg = 'Invalid email or security passcode credential.';
+      }
+      return { success: false, error: errMsg };
     }
+  };
+
+  const registerWithEmailPassword = async (
+    email: string,
+    password: string,
+    name?: string,
+    phone?: string,
+    address?: string,
+    city?: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const user = await signUpWithEmail(email, password, name);
+      const cust: Customer = {
+        customerId: user.uid,
+        name: name || user.displayName || email.split('@')[0],
+        email: user.email || email,
+        phone: phone || '+92 300 0000000',
+        address: address || '',
+        city: city || 'Lahore',
+        createdAt: new Date().toISOString(),
+        wishlist: ['prod-01']
+      };
+      setCurrentCustomer(cust);
+      await saveCustomerProfile(cust);
+      return { success: true };
+    } catch (err: any) {
+      console.error('[EMAIL REGISTRATION ERROR]', err);
+      let errMsg = err.message || 'Registration failed';
+      if (errMsg.includes('auth/email-already-in-use')) {
+        errMsg = 'An archival account with this email address already exists. Please sign in instead.';
+      } else if (errMsg.includes('auth/weak-password')) {
+        errMsg = 'Passcode should be at least 6 characters.';
+      }
+      return { success: false, error: errMsg };
+    }
+  };
+
+  const updateCustomerProfile = async (data: Partial<Customer>): Promise<void> => {
+    if (!currentCustomer) return;
+    const updated: Customer = {
+      ...currentCustomer,
+      ...data
+    };
+    setCurrentCustomer(updated);
+    await saveCustomerProfile(updated);
   };
 
   const logoutCustomer = () => {
@@ -714,7 +952,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const result = await sendOrderTrackingEmail(order, recipientEmail, note);
       const logEntry = {
-        id: `LOG-${Date.now()}`,
+        id: `LOG-TRACK-${Date.now()}`,
         orderId: order.orderId,
         recipient: recipientEmail,
         sender: OWNER_EMAIL,
@@ -732,6 +970,41 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         };
       } else {
         return { success: false, message: result.error || 'Failed to dispatch email' };
+      }
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Dispatch error' };
+    }
+  };
+
+  const sendOrderConfirmation = async (
+    order: Order,
+    recipientEmail: string,
+    note?: string
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const result = await sendOrderConfirmationEmail(order, recipientEmail, note);
+      const logEntry = {
+        id: `LOG-CONFIRM-${Date.now()}`,
+        orderId: order.orderId,
+        recipient: recipientEmail,
+        sender: OWNER_EMAIL,
+        timestamp: new Date().toISOString(),
+        status: (result.success ? 'SENT' : 'FAILED') as 'SENT' | 'FAILED',
+        messageId: result.messageId
+      };
+      setEmailDispatchLogs(prev => [logEntry, ...prev.slice(0, 49)]);
+
+      if (result.success) {
+        setIsGmailConnected(true);
+        return {
+          success: true,
+          message: `Order confirmation email sent to ${recipientEmail} from ${OWNER_EMAIL}`
+        };
+      } else {
+        return {
+          success: false,
+          message: result.error || 'Order registered in Firestore cloud database; confirmation logged'
+        };
       }
     } catch (err: any) {
       return { success: false, message: err.message || 'Dispatch error' };
@@ -789,6 +1062,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       wishlist: []
     };
     saveCustomerProfile(custProfile);
+
+    // Automated Order Confirmation Email dispatch to user's entered email
+    sendOrderConfirmation(
+      newOrder,
+      orderData.customerEmail,
+      'Aapka order confirm ho gaya hai! (Your order has been confirmed and registered in our database).'
+    ).catch(err => {
+      console.warn('[ORDER CONFIRMATION AUTO-DISPATCH ERROR]', err);
+    });
 
     clearCart();
     return newOrder;
@@ -942,10 +1224,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         removeFromCart,
         updateQuantity,
         clearCart,
+        saveForLater,
+        moveToCartFromSaved,
+        addProduct,
+        updateProduct,
+        deleteProduct,
+        notifications,
+        addNotification,
+        removeNotification,
+        isAdminAuthenticated,
+        verifyAdminPasscode,
+        adminLogout,
         currentCustomer,
         customers,
         loginCustomer,
         loginWithGoogle,
+        loginWithEmailPassword,
+        registerWithEmailPassword,
+        updateCustomerProfile,
         logoutCustomer,
         wishlist,
         toggleWishlist,
@@ -1000,6 +1296,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         ownerGmail: OWNER_EMAIL,
         connectGmailAccount,
         sendTrackingEmail,
+        sendOrderConfirmation,
         emailDispatchLogs
       }}
     >

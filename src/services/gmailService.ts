@@ -175,6 +175,203 @@ export function generateOrderTrackingHtml(order: Order, customNote?: string): st
 }
 
 /**
+ * Generates editorial cyber-styled order confirmation HTML template with Urdu & English confirmation
+ */
+export function generateOrderConfirmationHtml(order: Order, customNote?: string): string {
+  const itemsHtml = order.items
+    .map(
+      item => `
+      <tr style="border-bottom: 1px solid #1a1b1b;">
+        <td style="padding: 12px 14px; font-size: 13px; color: #F3EDD8;">
+          <strong>${item.product.name}</strong><br/>
+          <span style="font-size: 11px; color: #888888;">Size: ${item.size} | Color: ${item.color}</span>
+        </td>
+        <td style="padding: 12px 14px; font-size: 13px; color: #FD8A46; text-align: center;">
+          x${item.quantity}
+        </td>
+        <td style="padding: 12px 14px; font-size: 13px; color: #F3EDD8; text-align: right;">
+          PKR ${(item.product.price * item.quantity).toLocaleString()}
+        </td>
+      </tr>
+    `
+    )
+    .join('');
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>NovaRetron Order Confirmation</title>
+</head>
+<body style="margin: 0; padding: 24px; background-color: #070707; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #F3EDD8;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; background-color: #0e0f0f; border: 1px solid #202221;">
+    <!-- Header -->
+    <tr>
+      <td style="padding: 30px 24px; background-color: #121313; border-bottom: 2px solid #FD8A46;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+          <tr>
+            <td>
+              <div style="font-family: monospace; font-size: 11px; letter-spacing: 2px; color: #FD8A46; text-transform: uppercase;">
+                NOVA / RETRON ARCHIVAL APPAREL
+              </div>
+              <h1 style="margin: 6px 0 0 0; font-size: 22px; font-weight: 800; color: #F3EDD8; letter-spacing: -0.5px;">
+                ORDER CONFIRMED // تصدیقِ آرڈر
+              </h1>
+            </td>
+            <td style="text-align: right;">
+              <span style="display: inline-block; padding: 6px 12px; background-color: rgba(253, 138, 70, 0.15); border: 1px solid #FD8A46; color: #FD8A46; font-size: 12px; font-weight: bold; font-family: monospace;">
+                CONFIRMED
+              </span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Body Info -->
+    <tr>
+      <td style="padding: 24px;">
+        <div style="margin-bottom: 20px; padding: 14px 18px; background-color: #171918; border-left: 3px solid #FD8A46; font-size: 13px; color: #F3EDD8; line-height: 1.6;">
+          <strong>محترم ${order.customerName}، آپ کا آرڈر کنفرم ہو گیا ہے!</strong><br/>
+          Dear <strong>${order.customerName}</strong>, your allocation for Order <strong style="color: #FD8A46; font-family: monospace;">${order.orderId}</strong> has been successfully confirmed and registered in our real-time neural database.
+        </div>
+
+        ${customNote ? `<div style="margin-bottom: 20px; padding: 12px 16px; background-color: #171918; border: 1px solid #202221; font-size: 13px; color: #b8b3a0;">${customNote}</div>` : ''}
+
+        <!-- Order Summary Card -->
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 20px 0; background-color: #121313; border: 1px solid #202221; font-family: monospace; font-size: 12px;">
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #202221; color: #888888;">ORDER REFERENCE</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #202221; color: #FD8A46; font-weight: bold; text-align: right;">${order.orderId}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #202221; color: #888888;">RECIPIENT NAME</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #202221; color: #F3EDD8; text-align: right;">${order.customerName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #202221; color: #888888;">CONTACT PHONE</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #202221; color: #F3EDD8; text-align: right;">${order.customerPhone}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #202221; color: #888888;">DELIVERY DESTINATION</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #202221; color: #F3EDD8; text-align: right;">${order.shippingAddress.address}, ${order.shippingAddress.city}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #202221; color: #888888;">PAYMENT METHOD</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #202221; color: #F3EDD8; text-align: right;">${order.paymentMethod}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; color: #888888;">TOTAL DISPATCH VALUE</td>
+            <td style="padding: 12px 16px; color: #FD8A46; font-size: 14px; font-weight: bold; text-align: right;">PKR ${order.total.toLocaleString()}</td>
+          </tr>
+        </table>
+
+        <!-- Cargo Manifest -->
+        <h3 style="margin: 24px 0 12px 0; font-size: 12px; font-family: monospace; letter-spacing: 1px; color: #FD8A46; text-transform: uppercase;">
+          ALLOCATED GARMENTS & ITEMS
+        </h3>
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px; border: 1px solid #202221; font-family: monospace;">
+          ${itemsHtml}
+        </table>
+
+        <div style="text-align: center; margin: 30px 0 10px 0;">
+          <a href="https://ais-pre-7xzrqmvqo2hwcd6blfoyto-643785046848.asia-east1.run.app" style="display: inline-block; padding: 12px 28px; background-color: #FD8A46; color: #070707; text-decoration: none; font-weight: bold; font-family: monospace; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">
+            TRACK ORDER STATUS IN REAL-TIME ➔
+          </a>
+        </div>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="padding: 20px 24px; background-color: #070707; border-top: 1px solid #202221; font-family: monospace; font-size: 11px; color: #666666; text-align: center; line-height: 1.5;">
+        Automated Order Confirmation dispatched from store owner: <strong>${OWNER_EMAIL}</strong> via Gmail API.<br/>
+        NovaRetron Neural Fashion Logistics &copy; 2026. All rights reserved.
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Sends order confirmation email to the customer's specified email address
+ */
+export async function sendOrderConfirmationEmail(
+  order: Order,
+  recipientEmail: string,
+  customNote?: string
+): Promise<EmailDispatchResult> {
+  const toEmail = recipientEmail.trim();
+  const fromEmail = OWNER_EMAIL;
+  const subject = `[NovaRetron] Order Confirmed: ${order.orderId} - Aapka Order Confirm Hogya Hai!`;
+  const htmlContent = generateOrderConfirmationHtml(order, customNote);
+
+  const timestamp = new Date().toISOString();
+
+  try {
+    let token = getCachedAccessToken();
+    if (!token) {
+      console.log('[GMAIL SERVICE] No cached token found for order confirmation, attempting token retrieval...');
+      token = await requestGmailAccessToken();
+    }
+
+    if (!token) {
+      // Return structured response noting token requirement
+      return {
+        success: false,
+        error: `Gmail OAuth permission needed from ${OWNER_EMAIL} to transmit directly via Gmail. Order is saved in Firestore.`,
+        sender: fromEmail,
+        recipient: toEmail,
+        timestamp,
+        orderId: order.orderId
+      };
+    }
+
+    const rawEmail = createRawEmail(toEmail, fromEmail, subject, htmlContent);
+
+    const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ raw: rawEmail })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[GMAIL API ORDER CONFIRMATION ERROR]', response.status, errorData);
+      throw new Error(errorData?.error?.message || `Gmail API HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('[GMAIL API SUCCESS] Order confirmation email dispatched:', data.id);
+
+    return {
+      success: true,
+      messageId: data.id,
+      sender: fromEmail,
+      recipient: toEmail,
+      timestamp,
+      orderId: order.orderId
+    };
+  } catch (err: any) {
+    console.error('[GMAIL ORDER CONFIRMATION ERROR]', err);
+    return {
+      success: false,
+      error: err.message || 'Failed to dispatch confirmation email',
+      sender: fromEmail,
+      recipient: toEmail,
+      timestamp,
+      orderId: order.orderId
+    };
+  }
+}
+
+/**
  * Sends order tracking email using Google Workspace Gmail API with the owner's OAuth token
  */
 export async function sendOrderTrackingEmail(

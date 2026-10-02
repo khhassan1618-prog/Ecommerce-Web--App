@@ -263,6 +263,32 @@ const ModelPlaceholderMesh: React.FC<{
   );
 };
 
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+class ThreeErrorBoundary extends React.Component<
+  { fallback: React.ReactNode; children: React.ReactNode },
+  ErrorBoundaryState
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any) {
+    console.warn('[3D WEBGL TELEMETRY EXCEPTION]', error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
 export const ProductViewer3D: React.FC<ProductViewer3DProps> = ({ product, className = '' }) => {
   const { playClickSound } = useStore();
   const controlsRef = useRef<any>(null);
@@ -272,6 +298,21 @@ export const ProductViewer3D: React.FC<ProductViewer3DProps> = ({ product, class
   const [rotationSpeed, setRotationSpeed] = useState<number>(1);
   const [materialMode, setMaterialMode] = useState<'basalt' | 'chrome' | 'rust'>('basalt');
   const [telemetry, setTelemetry] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const fallbackStill = (
+    <div className="relative w-full h-full min-h-[380px] md:min-h-[480px] flex flex-col items-center justify-center p-6 bg-[#070707]">
+      <img
+        src={product.images[0]}
+        alt={product.name}
+        referrerPolicy="no-referrer"
+        className="max-h-[360px] w-auto object-contain filter contrast-110 drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)]"
+      />
+      <div className="mt-4 px-3 py-1.5 bg-[#121313] border border-[#202221] font-mono text-[10px] text-[#FD8A46] tracking-wider uppercase flex items-center gap-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#FD8A46] animate-pulse" />
+        <span>3D ACCELERATOR OFFLINE // DISPLAYING HIGH-RES ARCHIVAL STILL</span>
+      </div>
+    </div>
+  );
 
   const handleZoom = (direction: 'in' | 'out') => {
     playClickSound(900);
@@ -294,19 +335,20 @@ export const ProductViewer3D: React.FC<ProductViewer3DProps> = ({ product, class
 
   return (
     <div className={`relative border border-[#202221] bg-[#070707] overflow-hidden select-none ${className}`}>
-      {/* 3D Canvas Mount Point using React Three Fiber */}
-      <div className="w-full h-full min-h-[380px] md:min-h-[480px]">
-        <Canvas
-          camera={{ position: [0, 0.4, 4.2], fov: 45 }}
-          gl={{
-            antialias: true,
-            alpha: true,
-            powerPreference: 'high-performance',
-            toneMapping: THREE.ACESFilmicToneMapping,
-            toneMappingExposure: 1.2
-          }}
-          className="cursor-grab active:cursor-grabbing"
-        >
+      {/* 3D Canvas Mount Point using React Three Fiber with Error Boundary */}
+      <ThreeErrorBoundary fallback={fallbackStill}>
+        <div className="w-full h-full min-h-[380px] md:min-h-[480px]">
+          <Canvas
+            camera={{ position: [0, 0.4, 4.2], fov: 45 }}
+            gl={{
+              antialias: true,
+              alpha: true,
+              powerPreference: 'high-performance',
+              toneMapping: THREE.ACESFilmicToneMapping,
+              toneMappingExposure: 1.2
+            }}
+            className="cursor-grab active:cursor-grabbing"
+          >
           {/* Subtle Ambient & Retro Studio Lights */}
           <ambientLight intensity={0.55} color="#F3EDD8" />
           <directionalLight position={[4, 5, 3]} intensity={1.8} color="#ffffff" />
@@ -359,6 +401,7 @@ export const ProductViewer3D: React.FC<ProductViewer3DProps> = ({ product, class
           />
         </Canvas>
       </div>
+      </ThreeErrorBoundary>
 
       {/* CRT Scanlines & Screen Texture Overlay */}
       <div className="absolute inset-0 scanlines-overlay opacity-30 pointer-events-none" />

@@ -1,5 +1,15 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+  User
+} from 'firebase/auth';
 import {
   getFirestore,
   doc,
@@ -73,11 +83,10 @@ onAuthStateChanged(auth, user => {
 
 // Initialize Firestore with explicit database ID
 const cfg = firebaseConfig as Record<string, any>;
+const targetDbId = cfg.firestoreDatabaseId || cfg.databaseId || 'ai-studio-novaretron-0fc1a0f9-fdee-4a6a-942e-2ce5dc4cfbf7';
 let firestoreDb;
 try {
-  firestoreDb = cfg.firestoreDatabaseId
-    ? getFirestore(app, cfg.firestoreDatabaseId)
-    : getFirestore(app);
+  firestoreDb = targetDbId ? getFirestore(app, targetDbId) : getFirestore(app);
 } catch {
   firestoreDb = getFirestore(app);
 }
@@ -87,7 +96,7 @@ export const db = firestoreDb;
 export async function testFirestoreConnection(): Promise<boolean> {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
-    console.log('[FIREBASE] Firestore connection verified to database:', cfg.firestoreDatabaseId);
+    console.log('[FIREBASE] Firestore connection verified to database:', targetDbId);
     return true;
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
@@ -111,6 +120,33 @@ export async function signInWithGoogle(): Promise<{ user: User | null; accessTok
     return { user: result.user, accessToken: credential?.accessToken || null };
   } catch (error) {
     console.error('[FIREBASE AUTH ERROR]', error);
+    throw error;
+  }
+}
+
+// Email & Password Sign Up (Registration)
+export async function signUpWithEmail(email: string, password: string, name?: string): Promise<User> {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    if (name && userCredential.user) {
+      await updateProfile(userCredential.user, { displayName: name });
+    }
+    console.log('[FIREBASE AUTH] Registered new user:', userCredential.user.email);
+    return userCredential.user;
+  } catch (error) {
+    console.error('[FIREBASE SIGNUP ERROR]', error);
+    throw error;
+  }
+}
+
+// Email & Password Sign In
+export async function signInWithEmail(email: string, password: string): Promise<User> {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    console.log('[FIREBASE AUTH] Signed in user:', userCredential.user.email);
+    return userCredential.user;
+  } catch (error) {
+    console.error('[FIREBASE LOGIN ERROR]', error);
     throw error;
   }
 }
